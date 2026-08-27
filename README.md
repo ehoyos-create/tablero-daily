@@ -123,15 +123,16 @@ Apartado, Lista, Lista numerada, Casilla, Cita, Código, Imagen, Enlace y Separa
 - **Imágenes** por el menú `/`, pegando con ⌘V o arrastrando el archivo. Van al bucket `notas`
   de Storage, **nunca incrustadas en base64**, y **se borran solas** cuando salen de la nota o
   cuando se borra la tarea.
-- **Tab anida y ⇧Tab desanida**, como en Notion.
 - **Las casillas son los caracteres ☐ y ☑**, no `<input>`: una lista copiada a un WhatsApp se
   sigue leyendo como lista.
 - **Todo lo que entra pasa por un saneador de lista blanca**: lo que se pega, lo que estaba
   guardado y lo que sale hacia la base.
 - ⌘K enlaza, ⌘⇧8 pone casilla, y ⌘/Ctrl+clic abre un enlace.
-- **Fuera de una lista, Tab mete una tabulación de texto**, no una sangría de bloque. Con
-  `indent` el bloque quedaba envuelto en un `<blockquote>` con margen y el cursor ya no podía
-  volver al principio de la línea ni se podía borrar la sangría: no había nada antes del texto.
+- **Tab: dentro de una lista anida y ⇧Tab desanida**, como en Notion. **Fuera de una lista mete
+  una tabulación de texto**, no una sangría de bloque, y la diferencia importa: con `indent` el
+  bloque quedaba envuelto en un `<blockquote>` con margen, y entonces el cursor no podía volver al
+  principio de la línea ni se podía borrar la sangría, porque no había nada antes del texto. Una
+  tabulación de verdad se recorre con la flecha y se quita con Backspace.
 - **`<body translate="no">`**, y no es un detalle: el traductor de Chrome reescribe el DOM metiendo
   `<font>` con el texto traducido, y dentro de un editable eso **se guarda**. La nota quedaría en
   la base traducida, encima del original.
