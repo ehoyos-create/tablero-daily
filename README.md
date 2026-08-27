@@ -115,7 +115,12 @@ puede saltársela, ni siquiera escribiendo directo contra la base.
   prioridad, horizontal las fechas. El vertical queda **acotado al grupo**, porque soltar una barra
   en el grupo de otra persona sería reasignarle la tarea sin decirlo. Una tarea con dos dueños cae
   en el grupo del **primero** en el orden del equipo, no en los dos: dos barras con el mismo id y
-  el arrastre no sabría cuál se está moviendo.
+  el arrastre no sabría cuál se está moviendo. El fantasma punteado se posiciona leyendo el
+  `offsetTop` real de cada fila y no como `índice × alto`: las cabeceras de grupo miden distinto y
+  la cuenta se desfasaba una fila.
+- **Flechas de bloqueo** en el Timeline: una línea del final de la que bloquea al arranque de la
+  bloqueada, en blanco bajito y detrás de las barras, sin capturar el ratón. Si alguna de las dos
+  no cae en el mes que se ve, no se dibuja.
 
 ### Las notas son un editor de verdad
 

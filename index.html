@@ -169,6 +169,12 @@ button{cursor:pointer}
 .tl-asa.izq{left:0} .tl-asa.der{right:0}
 .tl-barra:hover .tl-asa:after{content:"";position:absolute;top:9px;bottom:9px;width:2px;border-radius:2px;background:rgba(255,255,255,.55)}
 .tl-asa.izq:after{left:4px} .tl-asa.der:after{right:4px}
+/* Las flechas de bloqueo. Detras de las barras (z-index 0 contra el 1 de
+   ellas) y sin capturar el raton: son una pista, no un control. */
+.tl-flechas{position:absolute;left:0;top:0;z-index:0;pointer-events:none;overflow:visible}
+.tl-flechas .ln{fill:none;stroke:rgba(255,255,255,.26);stroke-width:1.4;
+  stroke-linejoin:round;stroke-linecap:round}
+.tl-flechas .pt{fill:rgba(255,255,255,.42)}
 /* El fantasma punteado: donde va a caer la barra, ya cuadrada al dia y a la fila. */
 .tl-fantasma{position:absolute;height:28px;border-radius:6px;pointer-events:none;z-index:4;
   border:1.5px dashed rgba(255,255,255,.5);background:rgba(255,255,255,.07)}
@@ -2313,7 +2319,7 @@ let TLVIS=[];
    arrastre vertical queda ACOTADO AL GRUPO: mover una barra al grupo de otra
    persona seria reasignarle la tarea sin decirlo, y eso se hace en el panel.
    Para ordenar por fecha esta el boton de al lado, que renumera `orden`. */
-let TLGRUPOS=false, TLGRP=[];
+let TLGRUPOS=false, TLGRP=[], TLTOP=[];
 try{TLGRUPOS=localStorage.getItem('daily-tl-grupos')==='1'}catch(_){}
 
 /* Se agrupa por el PRIMER responsable en el orden del equipo, no por todos: una
@@ -2416,7 +2422,7 @@ function pintarTL(){
     }
     const t=f.t, fi=f.fi;
     const a=t.fecha_inicio||t.fecha, b=t.fecha||t.fecha_inicio;
-    html+='<div class="tl-fila">';
+    html+='<div class="tl-fila" data-fi="'+fi+'">';
     if(!(b<ini||a>fin)){
       const desde=Math.max(0,difDias(ini,a));
       const hasta=Math.min(dias-1,difDias(ini,b));
@@ -2446,6 +2452,48 @@ function pintarTL(){
   if(hd>=0&&hd<dias)html+='<div class="tl-hoyl" style="left:'+(hd*DW+DW/2)+'px"></div>';
   html='<div class="tl-libre"></div>'+html;
   $('tl-filas').innerHTML=html;
+  /* La posicion real de cada fila, leida del DOM y no calculada como
+     `indice * FILA`. Agrupado hay cabeceras entre medio, que miden distinto,
+     y la cuenta se desfasaba: el fantasma salia una fila mas arriba de la
+     barra que se estaba moviendo. */
+  TLTOP=[];
+  $('tl-filas').querySelectorAll('.tl-fila[data-fi]').forEach(el=>{TLTOP[+el.dataset.fi]=el.offsetTop});
+  pintarFlechas();
+}
+
+/* ---------- las flechas de bloqueo ----------
+   Una linea desde el final de la que bloquea hasta el arranque de la bloqueada.
+   Va detras de las barras, en un tono de blanco bajito: tiene que leerse sin
+   competirle a nada. */
+function pintarFlechas(){
+  const cont=$('tl-filas');
+  const viejo=cont.querySelector('.tl-flechas'); if(viejo)viejo.remove();
+  const barras={};
+  cont.querySelectorAll('.tl-barra[data-id]').forEach(b=>{barras[b.dataset.id]=b});
+  const geo=el=>({x:el.offsetLeft,w:el.offsetWidth,
+    y:el.parentNode.offsetTop+el.offsetTop+el.offsetHeight/2});
+  let d='',cab='';
+  TLVIS.forEach(t=>{
+    if(!t.bloqueado||!t.bloqueo_tarea)return;
+    const de=barras[t.bloqueo_tarea], a=barras[t.id];
+    if(!de||!a)return;                       // alguna no cae en el mes que se ve
+    const g=geo(de), h=geo(a);
+    const x1=g.x+g.w, y1=g.y, x2=h.x, y2=h.y;
+    const s=11;
+    /* Si la bloqueada arranca despues, se va en codo. Si arranca antes o encima,
+       se rodea por el carril de en medio para no cruzar la barra por dentro. */
+    d+=(x2>=x1+s*2)
+      ? 'M'+x1+' '+y1+'H'+(x1+s)+'V'+y2+'H'+(x2-5)
+      : 'M'+x1+' '+y1+'h'+s+'V'+(y1+(y2>y1?1:-1)*(FILA/2))+'H'+(x2-s*1.7)+'V'+y2+'H'+(x2-5);
+    cab+='<path d="M'+(x2-5)+' '+(y2-4)+'L'+x2+' '+y2+'L'+(x2-5)+' '+(y2+4)+'Z"/>';
+  });
+  if(!d)return;
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('class','tl-flechas');
+  svg.setAttribute('width',cont.scrollWidth);
+  svg.setAttribute('height',cont.scrollHeight);
+  svg.innerHTML='<path class="ln" d="'+d+'"/><g class="pt">'+cab+'</g>';
+  cont.appendChild(svg);
 }
 
 function irVista(v){
@@ -2530,7 +2578,7 @@ $('tl-filas').addEventListener('pointerdown',e=>{
   arr.fan=document.createElement('div');
   arr.fan.className='tl-fantasma';
   arr.fan.style.left=left0+'px';arr.fan.style.width=w0+'px';
-  arr.fan.style.top=(10+fila*FILA+5)+'px';
+  arr.fan.style.top=((TLTOP[fila]!=null?TLTOP[fila]:10+fila*FILA)+5)+'px';
   $('tl-filas').appendChild(arr.fan);
   barra.setPointerCapture(e.pointerId);
   barra.classList.add('mov');if(arr.meta)arr.meta.classList.add('mov');
@@ -2587,7 +2635,8 @@ function aplicarArrastre(){
     arr.barra.style.width=(arr.w0+px)+'px';
     arr.fan.style.width=(arr.w0+dd*DW)+'px';
   }
-  arr.fan.style.top=(10+(arr.fila+df)*FILA+5)+'px';
+  const ft=TLTOP[arr.fila+df];
+  arr.fan.style.top=((ft!=null?ft:10+(arr.fila+df)*FILA)+5)+'px';
 }
 
 /* El lienzo se corre solo cuando el cursor se acerca a un borde, mas rapido
