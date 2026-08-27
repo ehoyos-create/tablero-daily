@@ -126,6 +126,14 @@ button{cursor:pointer}
 .tl-dia.hoy .n{display:inline-grid;place-items:center;width:23px;height:23px;border-radius:999px;background:#E0574A;font-weight:600}
 .tl-filas{position:relative;padding:10px 0 0}
 .tl-fila{position:relative;height:40px}
+/* La cabecera de cada persona. Va `sticky` a la izquierda para que no se pierda
+   al correr el lienzo de meses. */
+.tl-grupo{height:34px;display:flex;align-items:flex-end;padding-bottom:5px}
+.tl-grupo .gl{position:sticky;left:0;display:inline-flex;align-items:center;gap:8px;
+  padding:3px 11px 3px 4px;border-radius:999px;background:var(--card);
+  border:1px solid var(--line-2);font-size:12.5px;color:var(--tx-2);white-space:nowrap;z-index:3}
+.tl-grupo .gl:before{content:"";width:3px;height:15px;border-radius:2px;background:var(--c);flex:none;margin-left:3px}
+.tl-grupo .gl s{text-decoration:none;color:var(--tx-3);font-size:11.5px}
 .tl-rejilla{position:absolute;inset:0;display:flex;pointer-events:none;z-index:0}
 .tl-rejilla i{flex:none;border-right:1px solid var(--line-2);height:100%}
 .tl-rejilla i.fds{background:rgba(255,255,255,.022)}
@@ -296,8 +304,16 @@ button{cursor:pointer}
    nota vacia quedaba en una sola linea. */
 /* ---------- el editor de notas ----------
    Es un contenteditable, no un textarea: se pidio formato e imagenes. */
-#p-notas{font-variant-ligatures:none;min-height:66px;outline:0;white-space:pre-wrap;word-break:break-word;
-  line-height:1.62;padding:2px 0}
+/* La cajita: se ve donde se puede escribir, y se enciende al acercarse. Se
+   perdio al cambiar el <textarea> por un contenteditable, porque la regla
+   colgaba de `.bloque textarea`. */
+#p-notas{font-variant-ligatures:none;min-height:210px;outline:0;white-space:pre-wrap;word-break:break-word;
+  line-height:1.62;padding:11px 13px;margin-left:-13px;border-radius:11px;
+  border:1px solid var(--line-2);background:rgba(255,255,255,.02);
+  transition:background .14s,border-color .14s,box-shadow .14s}
+#p-notas:hover{background:rgba(255,255,255,.04);border-color:var(--line)}
+#p-notas:focus{background:rgba(255,255,255,.055);border-color:rgba(224,138,91,.42);
+  box-shadow:0 0 0 3px rgba(224,138,91,.08)}
 #p-notas:empty:before{content:attr(data-ph);color:var(--tx-3);pointer-events:none}
 #p-notas h1{font-size:22px;font-weight:650;letter-spacing:-.01em;margin:16px 0 4px;line-height:1.3}
 #p-notas h2{font-size:18px;font-weight:650;margin:14px 0 3px;line-height:1.32}
@@ -620,7 +636,7 @@ body.lat-fija .lienzo{padding-left:250px}
 @media (prefers-reduced-motion:reduce){*{transition-duration:.01ms!important}}
 </style>
 </head>
-<body>
+<body translate="no">
 
 <div class="lat-zona" id="lat-zona" aria-hidden="true"></div>
 <div class="lat-velo" id="lat-velo"></div>
@@ -682,6 +698,7 @@ body.lat-fija .lienzo{padding-left:250px}
       <span class="tl-mes" id="tl-mes"></span>
       <div class="tl-nav-r">
         <button class="ico-btn" id="tl-prev" title="Mes anterior"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg></button>
+        <button class="tl-hoy" id="tl-agr" title="Agrupar por responsable y ordenar por fecha">Agrupar</button>
         <button class="tl-hoy" id="tl-hoy">Hoy</button>
         <button class="ico-btn" id="tl-next" title="Mes siguiente"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l5 5-5 5"/></svg></button>
       </div>
@@ -1793,6 +1810,7 @@ $('enl-url').addEventListener('keydown',e=>{
 });
 /* Dentro de un editable un enlace no navega solo: con ⌘ o Ctrl se abre. */
 ED().addEventListener('click',e=>{
+  cerrarEnlace();
   const a=e.target.closest&&e.target.closest('a[href]');
   if(a&&(e.metaKey||e.ctrlKey)){e.preventDefault();window.open(a.href,'_blank','noopener')}
 });
@@ -2041,11 +2059,23 @@ ED().addEventListener('keydown',e=>{
     }
     if(e.key==='Escape'){e.preventDefault();cerrarSlash();return}
   }
-  /* Tab anida y ⇧Tab desanida, como en Notion. Sin esto el Tab se lleva el foco
-     fuera del editor y se pierde lo que se venia escribiendo de vista. */
+  /* Tab: dentro de una lista anida y ⇧Tab desanida, como en Notion. Fuera de
+     una lista mete una tabulacion de TEXTO, no `indent`.
+     `indent` envolvia el bloque en un <blockquote> con margen, y entonces el
+     cursor no podia volver al principio de la linea ni se podia borrar la
+     sangria: no habia nada antes del texto. Una tabulacion de verdad se
+     recorre con la flecha y se quita con Backspace. */
   if(e.key==='Tab'){
     e.preventDefault();
-    document.execCommand(e.shiftKey?'outdent':'indent');
+    const b=bloqueActual();
+    if(b&&b.tagName==='LI'){
+      document.execCommand(e.shiftKey?'outdent':'indent');
+    }else if(e.shiftKey){
+      const t=b&&primerTexto(b);
+      if(t&&/^\t/.test(t.data))t.data=t.data.slice(1);
+    }else{
+      document.execCommand('insertText',false,'\t');
+    }
     leer();pronto();return;
   }
   if((e.metaKey||e.ctrlKey)&&e.shiftKey&&(e.key==='8'||e.key==='*')){
@@ -2154,7 +2184,13 @@ $('pop').addEventListener('keydown',e=>{
   const b=$('bloq-lista')&&$('bloq-lista').querySelector('button[data-v]');
   if(b)b.click();
 });
-document.addEventListener('click',()=>{if(menuAbierto)cerrarMenu();$('fmt-menu').classList.remove('on');cerrarSlash()});
+/* El globo del enlace para la propagacion, asi que tocarlo por dentro no lo
+   cierra; cualquier otro clic de la pagina si. Antes se quedaba flotando. */
+document.addEventListener('click',()=>{
+  if(menuAbierto)cerrarMenu();
+  $('fmt-menu').classList.remove('on');
+  cerrarSlash();cerrarEnlace();
+});
 let anchoPrev=innerWidth;
 addEventListener('resize',()=>{
   /* En movil, abrir el teclado cambia el alto y disparaba `resize`, que cerraba
@@ -2261,6 +2297,40 @@ let vista='board', tlMes=null;
 /* Las tareas que hay pintadas ahora mismo, en el orden en que se ven.
    El arrastre vertical necesita saber quien es el vecino de arriba y el de abajo. */
 let TLVIS=[];
+/* Agrupado por responsable y ordenado por fecha. Se recuerda en el navegador.
+   Mientras esta puesto NO se puede reordenar a mano: no tendria sentido
+   arrastrar una fila hacia arriba si la propia vista la va a devolver a su
+   grupo y a su fecha. El arrastre horizontal, que mueve fechas, sigue vivo. */
+let TLGRUPOS=false;
+try{TLGRUPOS=localStorage.getItem('daily-tl-grupos')==='1'}catch(_){}
+
+/* Se agrupa por el PRIMER responsable en el orden del equipo, no por todos: una
+   tarea de dos duenos en dos grupos serian dos barras con el mismo id, y el
+   arrastre no sabria cual se esta moviendo. */
+function tlGrupos(vis){
+  const orden=EQUIPO.map(p=>p.n);
+  const clave=t=>{
+    const l=pers(t.persona); if(!l.length)return '';
+    let mi=99,mejor=null;
+    l.forEach(x=>{const i=orden.findIndex(o=>o.toLowerCase()===x.toLowerCase());
+      if(i>=0&&i<mi){mi=i;mejor=orden[i]}});
+    return mejor||l[0];
+  };
+  const cf=t=>t.fecha_inicio||t.fecha||'9999-12-31';
+  const porFecha=(a,b)=>{
+    const fa=cf(a),fb=cf(b); if(fa!==fb)return fa<fb?-1:1;
+    const ga=a.fecha||a.fecha_inicio||'', gb=b.fecha||b.fecha_inicio||'';
+    if(ga!==gb)return ga<gb?-1:1;
+    return String(a.nombre||'').localeCompare(String(b.nombre||''),'es');
+  };
+  const g=new Map(); orden.forEach(x=>g.set(x,[]));
+  vis.forEach(t=>{const k=clave(t); if(!g.has(k))g.set(k,[]); g.get(k).push(t)});
+  const out=[];
+  g.forEach((l,k)=>{if(l.length)out.push({quien:k,tareas:l.slice().sort(porFecha)})});
+  /* Las que no tienen dueno van de ultimas: son las que hay que repartir. */
+  out.sort((a,b)=>(a.quien?0:1)-(b.quien?0:1));
+  return out;
+}
 /* ---------- el orden de las filas ----------
    Lo pone la mano: se arrastra arriba y abajo y ahi se queda, nada lo reacomoda
    despues. Lo unico automatico es el nacimiento: una tarea nueva entra por su
@@ -2301,9 +2371,24 @@ function pintarTL(){
   $('tl-dias').innerHTML=cab;
   $('tl-lienzo').style.width=(dias*DW)+'px';
 
-  const vis=DATOS.filter(t=>(!filtro||tiene(t,filtro))&&enRango(t.fecha,filtroT)&&(t.fecha||t.fecha_inicio)
+  let vis=DATOS.filter(t=>(!filtro||tiene(t,filtro))&&enRango(t.fecha,filtroT)&&(t.fecha||t.fecha_inicio)
       &&t.estado!=='Lista').sort(porOrden);
+  /* `filas` mezcla cabeceras y tareas para pintar; `vis` se queda solo con las
+     tareas y en el mismo orden, porque `data-fila` es su indice. */
+  let filas;
+  if(TLGRUPOS){
+    const gs=tlGrupos(vis);
+    vis=gs.flatMap(g=>g.tareas);
+    filas=[]; let i=0;
+    gs.forEach(g=>{
+      filas.push({grupo:g.quien,n:g.tareas.length});
+      g.tareas.forEach(t=>filas.push({t,fi:i++}));
+    });
+  }else{
+    filas=vis.map((t,fi)=>({t,fi}));
+  }
   TLVIS=vis;
+  $('tl-agr').classList.toggle('on',TLGRUPOS);
 
   if(!vis.length){
     $('tl-filas').innerHTML='<div class="tl-rejilla">'+rej+'</div>'+
@@ -2313,7 +2398,15 @@ function pintarTL(){
   }
   const fin=sumar(ini,dias-1);
   let html='<div class="tl-rejilla">'+rej+'</div>';
-  vis.forEach((t,fi)=>{
+  filas.forEach(f=>{
+    if(f.grupo!==undefined){
+      html+='<div class="tl-fila tl-grupo"><span class="gl" style="--c:'+
+        (f.grupo?hexDe(f.grupo):'var(--t-gray)')+'">'+
+        (f.grupo?avatar(f.grupo,1):'')+esc(f.grupo||'Sin responsable')+
+        '<s>'+f.n+'</s></span></div>';
+      return;
+    }
+    const t=f.t, fi=f.fi;
     const a=t.fecha_inicio||t.fecha, b=t.fecha||t.fecha_inicio;
     html+='<div class="tl-fila">';
     if(!(b<ini||a>fin)){
@@ -2362,6 +2455,13 @@ function centrarHoy(){
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>irVista(b.dataset.vista)));
 $('tl-prev').addEventListener('click',()=>{tlMes=new Date(tlMes.getFullYear(),tlMes.getMonth()-1,1);pintarTL()});
 $('tl-next').addEventListener('click',()=>{tlMes=new Date(tlMes.getFullYear(),tlMes.getMonth()+1,1);pintarTL()});
+$('tl-agr').addEventListener('click',()=>{
+  TLGRUPOS=!TLGRUPOS;
+  try{localStorage.setItem('daily-tl-grupos',TLGRUPOS?'1':'')}catch(_){}
+  pintarTL();
+  toast(TLGRUPOS?'Agrupado por responsable y ordenado por fecha. El orden a mano queda en pausa.'
+                :'Vuelve el orden a mano');
+});
 $('tl-hoy').addEventListener('click',()=>{tlMes=new Date(new Date().getFullYear(),new Date().getMonth(),1);pintarTL();centrarHoy()});
 
 /* ================= ARRASTRAR LAS BARRAS =================
@@ -2432,7 +2532,7 @@ function aplicarArrastre(){
 
   const px=Math.max(minD*DW,Math.min(maxD*DW,dx));
   const dd=Math.max(minD,Math.min(maxD,Math.round(dx/DW)));
-  const df=arr.modo==='mover'
+  const df=(arr.modo==='mover'&&!TLGRUPOS)
     ?Math.max(-arr.fila,Math.min(arr.nf-1-arr.fila,Math.round(dy/FILA))):0;
   arr.dd=dd;arr.df=df;
 

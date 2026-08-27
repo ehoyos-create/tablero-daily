@@ -108,6 +108,11 @@ puede saltársela, ni siquiera escribiendo directo contra la base.
   en `Lista` nace en `Por hacer`: si naciera terminada, le sumaría sus horas otra vez al Pulso de
   esta semana, que es trabajo que nadie hizo.
 - **Filtros** por persona y por tiempo, e **historial** de lo archivado.
+- **Agrupar** en el Timeline: junta las barras por responsable y las ordena por fecha dentro de
+  cada grupo. Mientras está puesto **el orden a mano queda en pausa**, porque no tendría sentido
+  subir una fila que la propia vista va a devolver a su grupo. El arrastre horizontal, que mueve
+  fechas, sigue vivo. Una tarea con dos dueños cae en el grupo del **primero** en el orden del
+  equipo, no en los dos: dos barras con el mismo id y el arrastre no sabría cuál se está moviendo.
 
 ### Las notas son un editor de verdad
 
@@ -124,6 +129,12 @@ Apartado, Lista, Lista numerada, Casilla, Cita, Código, Imagen, Enlace y Separa
 - **Todo lo que entra pasa por un saneador de lista blanca**: lo que se pega, lo que estaba
   guardado y lo que sale hacia la base.
 - ⌘K enlaza, ⌘⇧8 pone casilla, y ⌘/Ctrl+clic abre un enlace.
+- **Fuera de una lista, Tab mete una tabulación de texto**, no una sangría de bloque. Con
+  `indent` el bloque quedaba envuelto en un `<blockquote>` con margen y el cursor ya no podía
+  volver al principio de la línea ni se podía borrar la sangría: no había nada antes del texto.
+- **`<body translate="no">`**, y no es un detalle: el traductor de Chrome reescribe el DOM metiendo
+  `<font>` con el texto traducido, y dentro de un editable eso **se guarda**. La nota quedaría en
+  la base traducida, encima del original.
 
 ---
 
