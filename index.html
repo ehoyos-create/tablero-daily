@@ -163,8 +163,16 @@ button{cursor:pointer}
 .tl-barra.bloq{background-image:repeating-linear-gradient(135deg,
   rgba(224,138,91,.55) 0 6px,rgba(224,138,91,0) 6px 12px);
   box-shadow:0 0 0 1.5px rgba(224,138,91,.75),0 1px 3px rgba(0,0,0,.35)}
+/* Destrabada: tuvo bloqueo y ya no lo tiene. Mismo rayado, para que se lea como
+   la misma familia, pero en azul claro sobre el azul de `En curso`: el ambar
+   dice "esto no puede avanzar" y aca ya avanza. Se distingue del azul liso,
+   que es la que nunca estuvo bloqueada. */
+.tl-barra.bloq.destrab{background-image:repeating-linear-gradient(135deg,
+  rgba(141,187,240,.42) 0 6px,rgba(141,187,240,0) 6px 12px);
+  box-shadow:0 0 0 1.5px rgba(141,187,240,.6),0 1px 3px rgba(0,0,0,.35)}
 .tl-barra .cand{flex:none;opacity:.95}
 .tl-meta .bl{font-size:12px;color:#e8a87c;overflow:hidden;text-overflow:ellipsis;max-width:260px}
+.tl-meta .bl.ok{color:#9dc0ec}
 .tl-asa{position:absolute;top:0;bottom:0;width:min(13px,33%);cursor:ew-resize;z-index:3;touch-action:none}
 .tl-asa.izq{left:0} .tl-asa.der{right:0}
 .tl-barra:hover .tl-asa:after{content:"";position:absolute;top:9px;bottom:9px;width:2px;border-radius:2px;background:rgba(255,255,255,.55)}
@@ -175,12 +183,20 @@ button{cursor:pointer}
 .tl-flechas .ln{fill:none;stroke:rgba(255,255,255,.26);stroke-width:1.4;
   stroke-linejoin:round;stroke-linecap:round}
 .tl-flechas .pt{fill:rgba(255,255,255,.42)}
+/* La flecha del bloqueo que ya se resolvio no se borra: se apaga y se puntea.
+   El mapa de dependencias sigue contando la historia. */
+.tl-flechas .ln.ok{stroke:rgba(141,187,240,.3);stroke-dasharray:4 4}
+.tl-flechas .pt.ok{fill:rgba(141,187,240,.45)}
 /* El fantasma punteado: donde va a caer la barra, ya cuadrada al dia y a la fila. */
 .tl-fantasma{position:absolute;height:28px;border-radius:6px;pointer-events:none;z-index:4;
   border:1.5px dashed rgba(255,255,255,.5);background:rgba(255,255,255,.07)}
 .tl-meta{position:absolute;top:5px;height:28px;display:flex;align-items:center;gap:8px;z-index:1;pointer-events:none;white-space:nowrap}
 .tl-meta .nm{font-size:12.5px;color:var(--tx);max-width:230px;overflow:hidden;text-overflow:ellipsis}
-.tl-meta .hr{font-size:11.5px;color:var(--tx-2)}
+/* La talla va en un carril de ancho fijo, y se pinta aunque este vacia. Las
+   tallas no miden lo mismo (`1h - 2h` son 38px y `30 min - 1h` son 62px) y
+   ademas la talla es opcional: sin carril, cada nombre arrancaria en una x
+   distinta y la columna quedaria dentada. 64px es la mas ancha. */
+.tl-meta .hr{font-size:11.5px;color:var(--tx-2);flex:none;min-width:64px}
 .tl-meta .mk{font-size:12px;line-height:1}
 .tl-meta .ring{flex:none}
 .tl-libre{position:absolute;left:0;right:0;top:0;bottom:0;z-index:0;cursor:copy}
@@ -300,6 +316,7 @@ button{cursor:pointer}
 .tg.edad{background:none;border:1px solid var(--line-2);color:var(--tx-3)}
 /* El bloqueo se ve antes que nada: es lo que impide avanzar. */
 .tg.bloq{background:rgba(224,138,91,.18);color:#e8a87c;border:1px solid rgba(224,138,91,.35)}
+.tg.bloq.ok{background:rgba(141,187,240,.18);color:#9dc0ec;border-color:rgba(141,187,240,.35)}
 .pr[hidden]{display:none!important}
 .nota-barra{display:flex;align-items:center;gap:10px;margin-bottom:6px}
 .nota-barra button{display:inline-flex;align-items:center;gap:7px;padding:4px 10px;border-radius:7px;
@@ -1096,6 +1113,11 @@ const edadCorta=d=>{
    maneras que no se excluyen: apuntando a otra tarea del tablero, o con un
    texto a mano. Se pueden usar las dos a la vez. */
 const bloqDe=t=>DATOS.find(x=>x.id===t.bloqueo_tarea)||null;
+/* Destrabada: la que tuvo bloqueo y ya arranco. Pasarla a `En curso` ES la
+   manera de decir que el bloqueo se resolvio; no hay otro boton que apretar.
+   `bloqueado` no se borra a proposito: asi queda el rastro de que estuvo
+   trabada y la flecha del mapa no desaparece. */
+const destrab=t=>!!t.bloqueado&&t.estado==='En curso';
 function bloqTxt(t){
   if(!t.bloqueado)return '';
   const o=bloqDe(t);
@@ -1256,7 +1278,8 @@ function ficha(t){
     (t.resultado_esperado?'<div class="res">'+esc(t.resultado_esperado)+'</div>':'')+
     '<div class="smart'+(f?'':' ok')+'">'+(f?'⚠️ falta '+esc(f):'✅ SMART')+'</div>'+
     '<div class="tags">'+
-      (t.bloqueado?'<span class="tg bloq" title="'+esc(bloqTxt(t))+'">🔒 Bloqueada</span>':'')+
+      (t.bloqueado?'<span class="tg bloq'+(destrab(t)?' ok':'')+'" title="'+esc(bloqTxt(t))+'">'+
+        (destrab(t)?'🔓 Se destrabó':'🔒 Bloqueada')+'</span>':'')+
       (t.talla?'<span class="tg '+(tl?tl[1]:'')+'">'+esc(t.talla)+'</span>':'')+
       pers(t.piedra).map(n=>{const x=PIEDRAS.find(p=>p[0]===n);
         return '<span class="tg pi '+(x?x[1]:'')+'">'+esc(n)+'</span>'}).join('')+
@@ -2167,11 +2190,8 @@ $('pop').addEventListener('click',e=>{
     if(act.bloqueado)$('p-bloqueo-motivo').focus();
     guardar();refrescar();return;
   }
-  if(tipo==='filtro'){filtro=b.dataset.v;$('filtro-txt').textContent=filtro||'Personas';
-    $('filtro').classList.toggle('activo',!!filtro);cerrarMenu();refrescar();return}
-  if(tipo==='tiempo'){filtroT=b.dataset.v;
-    $('filtro-t-txt').textContent=(RANGOS.find(r=>r[0]===filtroT)||RANGOS[0])[1];
-    $('filtro-t').classList.toggle('activo',!!filtroT);cerrarMenu();refrescar();return}
+  if(tipo==='filtro'){ponerFiltroP(b.dataset.v);cerrarMenu();refrescar();return}
+  if(tipo==='tiempo'){ponerFiltroT(b.dataset.v);cerrarMenu();refrescar();return}
   if(tipo==='persona'||tipo==='piedra'){
     const campo=tipo==='persona'?'persona':'piedra';
     const v=b.dataset.v;
@@ -2228,6 +2248,24 @@ $('p-borrar').addEventListener('click',async()=>{
     toast('Tarea borrada')}
   catch(e){toast('No se pudo borrar: '+e.message,true)}
 });
+/* ---------- los filtros ----------
+   Poner un filtro son tres cosas a la vez: el valor, la etiqueta del boton y si
+   se ve encendido. Van juntas en una funcion porque las llaman dos sitios (el
+   menu y el arranque que restaura lo de la vez pasada), y escribirlas dos veces
+   es tener dos verdades: se desincronizan y el boton dice una cosa mientras el
+   tablero filtra por otra. */
+function ponerFiltroP(v){
+  filtro=v||'';
+  $('filtro-txt').textContent=filtro||'Personas';
+  $('filtro').classList.toggle('activo',!!filtro);
+  try{localStorage.setItem('daily-filtro',filtro)}catch(_){}
+}
+function ponerFiltroT(v){
+  filtroT=v||'';
+  $('filtro-t-txt').textContent=(RANGOS.find(r=>r[0]===filtroT)||RANGOS[0])[1];
+  $('filtro-t').classList.toggle('activo',!!filtroT);
+  try{localStorage.setItem('daily-rango',filtroT)}catch(_){}
+}
 $('filtro').addEventListener('click',e=>{e.stopPropagation();abrirMenu('filtro',$('filtro'))});
 $('filtro-t').addEventListener('click',e=>{e.stopPropagation();abrirMenu('tiempo',$('filtro-t'))});
 $('btn-hist').addEventListener('click',()=>{
@@ -2356,12 +2394,24 @@ const sumar=(f,n)=>{const d=dDe(f);d.setDate(d.getDate()+n);return dISO(d)};
 const difDias=(a,b)=>Math.round((dDe(b)-dDe(a))/86400000);
 
 const filasVacias=n=>'<div class="tl-fila"></div>'.repeat(n);
+/* ---------- el anillo de progreso ----------
+   Va de primero en la meta, pegado a la barra y antes del nombre: es lo que se
+   barre con la vista bajando por la columna, y por eso queda alineado.
+   El color dice que tan lleno esta, y la rampa va de azul a verde a proposito:
+   es el mismo viaje que hace la tarea, de `En curso` (azul) a `Lista` (verde).
+   No se usa rojo ni ambar, que serian los colores obvios de "va poquito",
+   porque en este tablero el rojo ya significa «va tarde» y el ambar
+   «bloqueada»: son otros dos problemas y no se pueden decir con el mismo
+   color. El anillo vacio se pinta igual cuando esta en cero, para que los
+   nombres de todas las filas arranquen en la misma vertical. */
+const COLOR_ANILLO=pc=>pc>=100?'#3fbf7f':pc>=67?'#4cb87a':pc>=34?'#5b93d6':'#a2bcdb';
 function anillo(pc){
-  const r=6.4,c=2*Math.PI*r;
+  const r=6.4,c=2*Math.PI*r,v=Math.max(0,Math.min(100,pc)),col=COLOR_ANILLO(v);
   return '<svg class="ring" width="17" height="17" viewBox="0 0 17 17" aria-hidden="true">'+
-    '<circle cx="8.5" cy="8.5" r="'+r+'" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="2.6"/>'+
-    (pc>0?'<circle cx="8.5" cy="8.5" r="'+r+'" fill="none" stroke="#d9a441" stroke-width="2.6" stroke-linecap="round" '+
-      'stroke-dasharray="'+c.toFixed(2)+'" stroke-dashoffset="'+(c*(1-pc/100)).toFixed(2)+'" transform="rotate(-90 8.5 8.5)"/>':'')+
+    '<circle cx="8.5" cy="8.5" r="'+r+'" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="2.6"/>'+
+    (v>0?'<circle cx="8.5" cy="8.5" r="'+r+'" fill="none" stroke="'+col+'" stroke-width="2.6" stroke-linecap="round" '+
+      'stroke-dasharray="'+c.toFixed(2)+'" stroke-dashoffset="'+(c*(1-v/100)).toFixed(2)+'" transform="rotate(-90 8.5 8.5)"/>':'')+
+    (v>=100?'<circle cx="8.5" cy="8.5" r="2.5" fill="'+col+'"/>':'')+
     '</svg>';
 }
 function tlRango(){
@@ -2429,20 +2479,25 @@ function pintarTL(){
       const w=Math.max(1,hasta-desde+1);
       const cls=t.estado==='Lista'?'e-lista':t.estado==='En curso'?'e-curso':'e-por';
       const tarde=b<hoy()&&t.estado!=='Lista';
-      html+='<div class="tl-barra '+cls+(tarde?' tarde':'')+(t.bloqueado?' bloq':'')+
+      html+='<div class="tl-barra '+cls+(tarde?' tarde':'')+
+        (t.bloqueado?' bloq'+(destrab(t)?' destrab':''):'')+
         '" data-id="'+t.id+'" data-fila="'+fi+'" '+
         'style="left:'+(desde*DW+3)+'px;width:'+(w*DW-6)+'px">'+
         '<span class="tl-asa izq"></span>'+
-        (t.bloqueado?'<span class="cand">🔒</span>':'')+
+        (t.bloqueado?'<span class="cand">'+(destrab(t)?'🔓':'🔒')+'</span>':'')+
         avatares(t.persona,1)+
         '<span class="tx">'+(w>2?esc(t.nombre):'')+'</span>'+
         '<span class="tl-asa der"></span></div>'+
         '<div class="tl-meta" data-fila="'+fi+'" style="left:'+((hasta+1)*DW+4)+'px">'+
-          '<span class="nm">'+esc(t.nombre)+'</span>'+
-          (t.talla?'<span class="hr">'+esc(t.talla)+'</span>':'')+
-          (t.bloqueado?'<span class="bl">🔒 '+esc(bloqTxt(t))+'</span>':'')+
-          '<span class="mk">'+(t.smart?'✅':'⚠️')+'</span>'+
           anillo(Number(t.progreso)||0)+
+          '<span class="hr">'+esc(t.talla||'')+'</span>'+
+          '<span class="nm">'+esc(t.nombre)+'</span>'+
+          (t.bloqueado?'<span class="bl'+(destrab(t)?' ok':'')+'">'+
+            (destrab(t)?'🔓 Se destrabó · ':'🔒 ')+esc(bloqTxt(t))+'</span>':'')+
+          /* Solo el aviso, no el visto. Que una tarea este bien escrita es lo
+             normal: marcarlas todas con ✅ llena la columna de ruido y el ⚠️
+             de la que si tiene un problema se pierde entre los vistos. */
+          (t.smart?'':'<span class="mk">⚠️</span>')+
         '</div>';
     }
     html+='</div>';
@@ -2472,32 +2527,38 @@ function pintarFlechas(){
   cont.querySelectorAll('.tl-barra[data-id]').forEach(b=>{barras[b.dataset.id]=b});
   const geo=el=>({x:el.offsetLeft,w:el.offsetWidth,
     y:el.parentNode.offsetTop+el.offsetTop+el.offsetHeight/2});
-  let d='',cab='';
+  /* Dos juegos: `viva` es el bloqueo que todavia frena, `ok` el que ya se
+     destrabo. Van en trazos separados porque el estilo lo pone el <path>, no
+     cada segmento: en uno solo no se podrian puntear unas si y otras no. */
+  const D={viva:'',ok:''}, CAB={viva:'',ok:''};
   TLVIS.forEach(t=>{
     if(!t.bloqueado||!t.bloqueo_tarea)return;
     const de=barras[t.bloqueo_tarea], a=barras[t.id];
     if(!de||!a)return;                       // alguna no cae en el mes que se ve
     const g=geo(de), h=geo(a);
     const x1=g.x+g.w, y1=g.y, x2=h.x, y2=h.y;
-    const s=11;
+    const s=11, k=destrab(t)?'ok':'viva';
     /* Si la bloqueada arranca despues, se va en codo. Si arranca antes o encima,
        se rodea por el carril de en medio para no cruzar la barra por dentro. */
-    d+=(x2>=x1+s*2)
+    D[k]+=(x2>=x1+s*2)
       ? 'M'+x1+' '+y1+'H'+(x1+s)+'V'+y2+'H'+(x2-5)
       : 'M'+x1+' '+y1+'h'+s+'V'+(y1+(y2>y1?1:-1)*(FILA/2))+'H'+(x2-s*1.7)+'V'+y2+'H'+(x2-5);
-    cab+='<path d="M'+(x2-5)+' '+(y2-4)+'L'+x2+' '+y2+'L'+(x2-5)+' '+(y2+4)+'Z"/>';
+    CAB[k]+='<path d="M'+(x2-5)+' '+(y2-4)+'L'+x2+' '+y2+'L'+(x2-5)+' '+(y2+4)+'Z"/>';
   });
-  if(!d)return;
+  if(!D.viva&&!D.ok)return;
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
   svg.setAttribute('class','tl-flechas');
   svg.setAttribute('width',cont.scrollWidth);
   svg.setAttribute('height',cont.scrollHeight);
-  svg.innerHTML='<path class="ln" d="'+d+'"/><g class="pt">'+cab+'</g>';
+  svg.innerHTML=
+    (D.ok  ?'<path class="ln ok" d="'+D.ok+'"/><g class="pt ok">'+CAB.ok+'</g>':'')+
+    (D.viva?'<path class="ln" d="'+D.viva+'"/><g class="pt">'+CAB.viva+'</g>':'');
   cont.appendChild(svg);
 }
 
 function irVista(v){
   vista=v;
+  try{localStorage.setItem('daily-vista',v)}catch(_){}
   document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.vista===v));
   $('board').hidden=(v!=='board');
   $('tl').hidden=(v!=='timeline');
@@ -3189,9 +3250,32 @@ addEventListener('keydown',e=>{
   if($('lat').classList.contains('on')&&!latFija)latOn(false);
 });
 
-/* Lo que estaba abierto la ultima vez. */
+/* ---------- lo que estaba abierto la ultima vez ----------
+   Vive en `localStorage`, o sea que es **por navegador**: nada de esto viaja a
+   la base ni lo ve nadie mas. Cada quien deja el tablero como lo usa y lo
+   encuentra igual, y el mismo enlace abierto en otro computador arranca con lo
+   suyo. Se recuerdan la pagina, la barra fijada, la vista (Board o Timeline),
+   el filtro de persona, el rango de fecha y si el Timeline estaba agrupado.
+
+   Lo que NO se recuerda, y es a proposito:
+   · **La tarea abierta.** El panel es un gesto del momento; volver al otro dia
+     y encontrarse el panel de una tarea encima del tablero es una pantalla que
+     nadie pidio. Se vuelve a la vista, con sus filtros, no a la tarea.
+   · **El historial.** No es un filtro sino otra consulta a la base, y arrancar
+     en el archivo hace parecer que el tablero de hoy esta vacio.
+   · **El mes del Timeline.** Al abrir se quiere ver hoy, y de eso se encarga
+     `centrarHoy`.
+
+   El filtro de persona se valida contra `EQUIPO`: si alguien se va, su nombre
+   guardado dejaria el tablero en blanco sin decir por que. */
 try{
   if(localStorage.getItem('daily-lat'))fijarLat(true);
+  const v=localStorage.getItem('daily-vista');
+  if(v==='board'||v==='timeline')vista=v;
+  const q=localStorage.getItem('daily-filtro')||'';
+  ponerFiltroP(EQUIPO.some(x=>x.n===q)?q:'');
+  const r=localStorage.getItem('daily-rango')||'';
+  ponerFiltroT(RANGOS.some(x=>x[0]===r)?r:'');
   const p=localStorage.getItem('daily-pag');
   if(p&&['daily','pulso','norte'].includes(p))irPagina(p);
 }catch(_){}
