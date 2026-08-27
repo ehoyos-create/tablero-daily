@@ -104,6 +104,11 @@ puede saltársela, ni siquiera escribiendo directo contra la base.
 - **Bloqueada**, por otra tarea o por un motivo escrito, que en el Timeline se pinta **rayada en
   ámbar**. Es ámbar y no rojo a propósito: el rojo ya significa «va tarde», y son dos problemas
   distintos. Una barra puede estar tarde **y** bloqueada, y se distinguen.
+- **Destrabada**, que es el tercer estado y no tiene botón: la manera de decir que el bloqueo se
+  resolvió es **pasar la tarea a `En curso`**, porque si arrancó es que ya no la frena nada.
+  Entonces la barra conserva **el mismo rayado** pero **en azul claro**, con el candado abierto
+  🔓. `bloqueado` no se borra: así queda el rastro de que estuvo trabada y la flecha del mapa no
+  desaparece, que es justo lo que explica por qué arrancó tarde.
 - **Duplicar**, en la cabecera del panel. Copia los diez campos y abre la copia. Una copia de algo
   en `Lista` nace en `Por hacer`: si naciera terminada, le sumaría sus horas otra vez al Pulso de
   esta semana, que es trabajo que nadie hizo.
@@ -120,7 +125,31 @@ puede saltársela, ni siquiera escribiendo directo contra la base.
   la cuenta se desfasaba una fila.
 - **Flechas de bloqueo** en el Timeline: una línea del final de la que bloquea al arranque de la
   bloqueada, en blanco bajito y detrás de las barras, sin capturar el ratón. Si alguna de las dos
-  no cae en el mes que se ve, no se dibuja.
+  no cae en el mes que se ve, no se dibuja. Van en **dos trazos**: el bloqueo vivo sólido, el que
+  ya se destrabó punteado y azulado. Tienen que ser dos `<path>` porque el `stroke-dasharray` lo
+  pone el path y no cada segmento.
+- **La meta de cada barra va en columnas**, en este orden: **anillo de progreso · talla · nombre ·
+  bloqueo · aviso**. El anillo va de primero, pegado a la barra, porque es lo que se barre con la
+  vista bajando por el Timeline, y **su color dice qué tan lleno está** (`1–33%` azul claro,
+  `34–66%` azul, `67–99%` verde, `100%` verde vivo con el centro relleno). La rampa va de azul a
+  verde a propósito: es el mismo viaje que hace la tarea, de `En curso` a `Lista`. No se usa rojo
+  ni ámbar, que serían los colores obvios de «va poquito», porque acá el rojo ya significa «va
+  tarde» y el ámbar «bloqueada». La talla va en un **carril de ancho fijo que se pinta aunque esté
+  vacío**, y el aro se pinta aunque el progreso esté en cero: sin eso, cada nombre arrancaría en
+  una x distinta y la columna saldría dentada. En el Timeline sale el `⚠️` pero **no el `✅`**: que
+  una tarea esté bien escrita es lo normal, y marcarlas todas con un visto hace que el aviso de la
+  que sí tiene un problema se pierda entre los vistos.
+- **El tablero se abre donde se dejó.** Se recuerdan la página, la barra fijada, la vista (Board o
+  Timeline), el filtro de persona, el rango de fecha y si el Timeline estaba agrupado. Vive en
+  `localStorage`, o sea que es **por navegador**: nada de esto viaja a la base ni lo ve nadie más,
+  y el mismo enlace abierto en otro computador arranca con lo suyo.
+  Lo que **no** se recuerda, a propósito: **la tarea abierta** (el panel es un gesto del momento;
+  volver al otro día y encontrarse el panel de una tarea encima del tablero es una pantalla que
+  nadie pidió, así que se vuelve a la vista con sus filtros, no a la tarea), **el historial** (no
+  es un filtro sino otra consulta a la base, y arrancar en el archivo hace parecer que el tablero
+  de hoy está vacío) y **el mes del Timeline** (al abrir se quiere ver hoy). El filtro de persona
+  se valida contra el equipo: si alguien se va, su nombre guardado dejaría el tablero en blanco
+  sin decir por qué.
 
 ### Las notas son un editor de verdad
 
