@@ -308,7 +308,7 @@ button{cursor:pointer}
    perdio al cambiar el <textarea> por un contenteditable, porque la regla
    colgaba de `.bloque textarea`. */
 #p-notas{font-variant-ligatures:none;min-height:210px;outline:0;white-space:pre-wrap;word-break:break-word;
-  line-height:1.62;padding:11px 13px;margin-left:-13px;border-radius:11px;
+  line-height:1.62;padding:11px 13px;border-radius:11px;
   border:1px solid var(--line-2);background:rgba(255,255,255,.02);
   transition:background .14s,border-color .14s,box-shadow .14s}
 #p-notas:hover{background:rgba(255,255,255,.04);border-color:var(--line)}
@@ -698,7 +698,8 @@ body.lat-fija .lienzo{padding-left:250px}
       <span class="tl-mes" id="tl-mes"></span>
       <div class="tl-nav-r">
         <button class="ico-btn" id="tl-prev" title="Mes anterior"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg></button>
-        <button class="tl-hoy" id="tl-agr" title="Agrupar por responsable y ordenar por fecha">Agrupar</button>
+        <button class="tl-hoy" id="tl-agr" title="Agrupar por responsable">Agrupar</button>
+        <button class="tl-hoy" id="tl-fecha" title="Renumerar la prioridad siguiendo las fechas">Por fecha</button>
         <button class="tl-hoy" id="tl-hoy">Hoy</button>
         <button class="ico-btn" id="tl-next" title="Mes siguiente"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l5 5-5 5"/></svg></button>
       </div>
@@ -2071,6 +2072,8 @@ ED().addEventListener('keydown',e=>{
     if(b&&b.tagName==='LI'){
       document.execCommand(e.shiftKey?'outdent':'indent');
     }else if(e.shiftKey){
+      /* Quita UNA tabulacion del arranque, se recorre hacia atras de a un tab.
+         Solo toca el arranque: una tabulacion en mitad del texto es texto. */
       const t=b&&primerTexto(b);
       if(t&&/^\t/.test(t.data))t.data=t.data.slice(1);
     }else{
@@ -2084,23 +2087,30 @@ ED().addEventListener('keydown',e=>{
   if((e.metaKey||e.ctrlKey)&&!e.shiftKey&&e.key.toLowerCase()==='k'){
     e.preventDefault();abrirEnlace();return;
   }
+  /* Enter hereda el arranque de la linea: las tabulaciones y la casilla. Si no,
+     escribir una lista sangrada obliga a volver a tabular en cada renglon. */
   if(e.key!=='Enter'||e.shiftKey)return;
   const b=bloqueActual(); if(!b)return;
   const t=primerTexto(b); if(!t)return;
-  const m=t.data.match(/^(\s*)([☐☑])\s?/); if(!m)return;
-  if(!b.textContent.slice(m[0].length).trim()){     // linea vacia: cierra la lista
-    e.preventDefault();t.data=m[1];leer();pronto();return;
+  const m=t.data.match(/^(\t*)(?:([☐☑])[  ]?)?/);
+  const tabs=m[1]||'', caja=m[2]||'';
+  if(!tabs&&!caja)return;                            // nada que heredar
+  /* Linea vacia: en vez de arrastrar la sangria y la casilla a la nada, se
+     limpian. Es la salida para dejar de estar sangrado. */
+  if(!b.textContent.slice(m[0].length).trim()){
+    e.preventDefault();t.data='';leer();pronto();return;
   }
-  /* Se deja que el navegador parta el bloque y despues se le pone la casilla al
-     nuevo: reimplementar el corte a mano rompe el deshacer. */
+  /* Se deja que el navegador parta el bloque y despues se le pone el arranque
+     al nuevo: reimplementar el corte a mano rompe el deshacer. */
+  const pre=tabs+(caja?CJ+' ':'');
   setTimeout(()=>{
     const nb=bloqueActual(); if(!nb||nb===b)return;
     let nt=primerTexto(nb);
-    if(nt&&/^\s*[☐☑]/.test(nt.data))return;
-    if(nt)nt.data=CJ+' '+nt.data;
-    else{nt=document.createTextNode(CJ+' ');nb.insertBefore(nt,nb.firstChild)}
+    if(nt&&(nt.data.startsWith(pre)||/^\t*[☐☑]/.test(nt.data)))return;
+    if(nt)nt.data=pre+nt.data;
+    else{nt=document.createTextNode(pre);nb.insertBefore(nt,nb.firstChild)}
     const s=getSelection(),r=document.createRange();
-    r.setStart(nt,2);r.collapse(true);s.removeAllRanges();s.addRange(r);
+    r.setStart(nt,pre.length);r.collapse(true);s.removeAllRanges();s.addRange(r);
     leer();pronto();
   },0);
 });
@@ -2297,11 +2307,13 @@ let vista='board', tlMes=null;
 /* Las tareas que hay pintadas ahora mismo, en el orden en que se ven.
    El arrastre vertical necesita saber quien es el vecino de arriba y el de abajo. */
 let TLVIS=[];
-/* Agrupado por responsable y ordenado por fecha. Se recuerda en el navegador.
-   Mientras esta puesto NO se puede reordenar a mano: no tendria sentido
-   arrastrar una fila hacia arriba si la propia vista la va a devolver a su
-   grupo y a su fecha. El arrastre horizontal, que mueve fechas, sigue vivo. */
-let TLGRUPOS=false;
+/* Agrupado por responsable. Se recuerda en el navegador.
+   Dentro de cada grupo manda `orden`, el mismo numero de siempre, para que se
+   pueda seguir arrastrando arriba y abajo para cambiar la prioridad. El
+   arrastre vertical queda ACOTADO AL GRUPO: mover una barra al grupo de otra
+   persona seria reasignarle la tarea sin decirlo, y eso se hace en el panel.
+   Para ordenar por fecha esta el boton de al lado, que renumera `orden`. */
+let TLGRUPOS=false, TLGRP=[];
 try{TLGRUPOS=localStorage.getItem('daily-tl-grupos')==='1'}catch(_){}
 
 /* Se agrupa por el PRIMER responsable en el orden del equipo, no por todos: una
@@ -2316,17 +2328,12 @@ function tlGrupos(vis){
       if(i>=0&&i<mi){mi=i;mejor=orden[i]}});
     return mejor||l[0];
   };
-  const cf=t=>t.fecha_inicio||t.fecha||'9999-12-31';
-  const porFecha=(a,b)=>{
-    const fa=cf(a),fb=cf(b); if(fa!==fb)return fa<fb?-1:1;
-    const ga=a.fecha||a.fecha_inicio||'', gb=b.fecha||b.fecha_inicio||'';
-    if(ga!==gb)return ga<gb?-1:1;
-    return String(a.nombre||'').localeCompare(String(b.nombre||''),'es');
-  };
   const g=new Map(); orden.forEach(x=>g.set(x,[]));
   vis.forEach(t=>{const k=clave(t); if(!g.has(k))g.set(k,[]); g.get(k).push(t)});
   const out=[];
-  g.forEach((l,k)=>{if(l.length)out.push({quien:k,tareas:l.slice().sort(porFecha)})});
+  /* `vis` ya viene ordenado por `orden`, asi que dentro del grupo se conserva
+     ese orden: es el que se mueve con el arrastre y el que se queda. */
+  g.forEach((l,k)=>{if(l.length)out.push({quien:k,tareas:l})});
   /* Las que no tienen dueno van de ultimas: son las que hay que repartir. */
   out.sort((a,b)=>(a.quien?0:1)-(b.quien?0:1));
   return out;
@@ -2382,12 +2389,13 @@ function pintarTL(){
     filas=[]; let i=0;
     gs.forEach(g=>{
       filas.push({grupo:g.quien,n:g.tareas.length});
-      g.tareas.forEach(t=>filas.push({t,fi:i++}));
+      g.tareas.forEach(t=>filas.push({t,fi:i++,g:g.quien}));
     });
   }else{
     filas=vis.map((t,fi)=>({t,fi}));
   }
   TLVIS=vis;
+  TLGRP=TLGRUPOS?filas.filter(f=>f.grupo===undefined).map(f=>f.g):[];
   $('tl-agr').classList.toggle('on',TLGRUPOS);
 
   if(!vis.length){
@@ -2459,8 +2467,30 @@ $('tl-agr').addEventListener('click',()=>{
   TLGRUPOS=!TLGRUPOS;
   try{localStorage.setItem('daily-tl-grupos',TLGRUPOS?'1':'')}catch(_){}
   pintarTL();
-  toast(TLGRUPOS?'Agrupado por responsable y ordenado por fecha. El orden a mano queda en pausa.'
-                :'Vuelve el orden a mano');
+  toast(TLGRUPOS?'Agrupado por responsable. Se sigue arrastrando, dentro de cada grupo.'
+                :'Una sola lista');
+});
+/* Renumera `orden` siguiendo las fechas. Es una accion aparte y no un efecto de
+   agrupar, a proposito: si agrupar reordenara solo, se llevaria por delante el
+   orden que alguien acaba de poner a mano. */
+$('tl-fecha').addEventListener('click',async()=>{
+  const b=$('tl-fecha');
+  if(TLGRUPOS){
+    /* Agrupado se renumera grupo por grupo, para no mezclarlos: cada quien
+       queda con sus tareas en orden cronologico. */
+    const gs=tlGrupos(DATOS.filter(t=>t.estado!=='Lista'&&(t.fecha||t.fecha_inicio)).sort(porOrden));
+    const plano=gs.flatMap(g=>g.tareas.slice().sort(porFechaCmp));
+    const resto=DATOS.filter(t=>!plano.includes(t));
+    b.disabled=true;
+    try{await bakearOrden(plano.concat(resto));refrescar();toast('Renumerado por fecha, dentro de cada grupo')}
+    catch(e){toast('No se pudo renumerar: '+e.message,true)}
+    b.disabled=false;
+    return;
+  }
+  b.disabled=true;
+  try{await bakearOrden(porFecha());refrescar();toast('Renumerado por fecha')}
+  catch(e){toast('No se pudo renumerar: '+e.message,true)}
+  b.disabled=false;
 });
 $('tl-hoy').addEventListener('click',()=>{tlMes=new Date(new Date().getFullYear(),new Date().getMonth(),1);pintarTL();centrarHoy()});
 
@@ -2532,8 +2562,15 @@ function aplicarArrastre(){
 
   const px=Math.max(minD*DW,Math.min(maxD*DW,dx));
   const dd=Math.max(minD,Math.min(maxD,Math.round(dx/DW)));
-  const df=(arr.modo==='mover'&&!TLGRUPOS)
-    ?Math.max(-arr.fila,Math.min(arr.nf-1-arr.fila,Math.round(dy/FILA))):0;
+  /* Agrupado, la barra solo se mueve dentro de su grupo: pasarla al de otra
+     persona seria reasignarle la tarea de callado. */
+  let lo=0, hi=arr.nf-1;
+  if(TLGRUPOS&&TLGRP.length&&TLGRP[arr.fila]!==undefined){
+    const g=TLGRP[arr.fila];
+    lo=TLGRP.indexOf(g); hi=TLGRP.lastIndexOf(g);
+  }
+  const df=arr.modo==='mover'
+    ?Math.max(lo-arr.fila,Math.min(hi-arr.fila,Math.round(dy/FILA))):0;
   arr.dd=dd;arr.df=df;
 
   if(arr.modo==='mover'){

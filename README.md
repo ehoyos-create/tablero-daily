@@ -108,11 +108,14 @@ puede saltársela, ni siquiera escribiendo directo contra la base.
   en `Lista` nace en `Por hacer`: si naciera terminada, le sumaría sus horas otra vez al Pulso de
   esta semana, que es trabajo que nadie hizo.
 - **Filtros** por persona y por tiempo, e **historial** de lo archivado.
-- **Agrupar** en el Timeline: junta las barras por responsable y las ordena por fecha dentro de
-  cada grupo. Mientras está puesto **el orden a mano queda en pausa**, porque no tendría sentido
-  subir una fila que la propia vista va a devolver a su grupo. El arrastre horizontal, que mueve
-  fechas, sigue vivo. Una tarea con dos dueños cae en el grupo del **primero** en el orden del
-  equipo, no en los dos: dos barras con el mismo id y el arrastre no sabría cuál se está moviendo.
+- **Agrupar** y **Por fecha**, en el Timeline. `Agrupar` junta las barras por responsable;
+  `Por fecha` renumera la prioridad siguiendo las fechas. Son dos botones a propósito: si agrupar
+  reordenara solo, se llevaría por delante el orden que alguien acaba de poner a mano. Dentro de
+  cada grupo sigue mandando `orden`, así que **el arrastre no se pierde**: vertical cambia la
+  prioridad, horizontal las fechas. El vertical queda **acotado al grupo**, porque soltar una barra
+  en el grupo de otra persona sería reasignarle la tarea sin decirlo. Una tarea con dos dueños cae
+  en el grupo del **primero** en el orden del equipo, no en los dos: dos barras con el mismo id y
+  el arrastre no sabría cuál se está moviendo.
 
 ### Las notas son un editor de verdad
 
@@ -132,7 +135,9 @@ Apartado, Lista, Lista numerada, Casilla, Cita, Código, Imagen, Enlace y Separa
   una tabulación de texto**, no una sangría de bloque, y la diferencia importa: con `indent` el
   bloque quedaba envuelto en un `<blockquote>` con margen, y entonces el cursor no podía volver al
   principio de la línea ni se podía borrar la sangría, porque no había nada antes del texto. Una
-  tabulación de verdad se recorre con la flecha y se quita con Backspace.
+  tabulación de verdad se recorre con la flecha y se quita con Backspace, de a un tab. **Enter
+  hereda el arranque de la línea**, tabulaciones y casilla, y si la línea queda vacía la limpia:
+  es la salida para dejar de estar sangrado.
 - **`<body translate="no">`**, y no es un detalle: el traductor de Chrome reescribe el DOM metiendo
   `<font>` con el texto traducido, y dentro de un editable eso **se guarda**. La nota quedaría en
   la base traducida, encima del original.
